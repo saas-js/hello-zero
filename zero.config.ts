@@ -1,27 +1,69 @@
 import { defineConfig } from "@rocicorp/zero/config";
-import { schema, type Schema } from "./src/schema.js";
+import { Message, schema, type Schema } from "./src/schema.js";
 
 // The contents of your decoded JWT.
 type AuthData = {
   sub: string;
 };
 
-export default defineConfig<AuthData, Schema>(schema, () => {
+export default defineConfig<AuthData, Schema>(schema, (query) => {
+  const allowIfLoggedIn = (authData: AuthData) =>
+    query.user.where("id", "=", authData.sub);
+
+  const allowIfMessageSender = (authData: AuthData, row: Message) => {
+    return query.message
+      .where("id", row.id)
+      .where("senderID", "=", authData.sub);
+  };
+
   return {
-    upstreamDBConnStr: "postgresql://127.0.0.1:5432/zerotest",
-    cvrDBConnStr: "postgresql://127.0.0.1:5432/zerotest",
-    changeDBConnStr: "postgresql://127.0.0.1:5432/zerotest",
+    upstreamDBConnStr: must(process.env.UPSTREAM_DB),
+    cvrDBConnStr: must(process.env.ZERO_DB),
+    changeDBConnStr: must(process.env.ZERO_DB),
+    replicaDBFile: must(process.env.ZERO_REPLICA_DB_FILE),
+    jwtSecret: must(process.env.JWT_SECRET),
 
     numSyncWorkers: undefined, // this means numCores - 1
-
-    replicaDBFile: "/tmp/zerotest-sync-replica.db",
-    jwtSecret: undefined,
 
     log: {
       level: "debug",
       format: "text",
     },
 
-    authorization: {},
+    authorization: {
+      // Nobody can write to the medium or user tables -- they are populated
+      // and fixed by seed.sql
+      medium: {
+        table: {
+          insert: [],
+          update: [],
+          delete: [],
+        },
+      },
+      user: {
+        table: {
+          insert: [],
+          update: [],
+          delete: [],
+        },
+      },
+      message: {
+        row: {
+          // anyone can insert
+          insert: undefined,
+          // only sender can edit their own messages
+          update: [allowIfMessageSender],
+          // must be logged in to delete
+          delete: [allowIfLoggedIn],
+        },
+      },
+    },
   };
 });
+
+function must(val) {
+  if (!val) {
+    throw new Error("Expected value to be defined");
+  }
+  return val;
+}

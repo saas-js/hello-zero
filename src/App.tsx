@@ -1,157 +1,214 @@
+import { useState, MouseEvent } from "react";
+import Cookies from "js-cookie";
 import { useQuery, useZero } from "@rocicorp/zero/react";
+import { escapeLike } from "@rocicorp/zero";
 import { Schema } from "./schema";
-import { ChangeEvent } from "react";
-import "./App.css";
+import { randomMessage } from "./test-data";
+import { randInt } from "./rand";
+import { useInterval } from "./use-interval";
+import { formatDate } from "./date";
 
 function App() {
   const z = useZero<Schema>();
-  const dax = useQuery(z.query.user.where("name", "Dax").one());
-  const cool = useQuery(z.query.user.where("name", "!=", "Dax"));
+  const users = useQuery(z.query.user);
   const mediums = useQuery(z.query.medium);
-  const messages = useQuery(
-    z.query.message
-      .related("sender", (sender) => sender.one())
-      .related("replies", (replies) =>
-        replies
-          .related("sender", (sender) => sender.one())
-          .related("medium", (medium) => medium.one())
-          .orderBy("timestamp", "asc")
-      )
-      .related("medium", (med) => med.one())
-      .orderBy("timestamp", "asc")
-  );
 
-  // If initial sync hasn't completed, these can be empty.
-  if (!dax || !mediums.length || !cool.length) {
-    return null;
+  const [filterUser, setFilterUser] = useState<string>("");
+  const [filterText, setFilterText] = useState<string>("");
+
+  const all = z.query.message;
+  const allMessages = useQuery(all);
+
+  let filtered = all
+    .related("medium", (medium) => medium.one())
+    .related("sender", (sender) => sender.one());
+
+  if (filterUser) {
+    filtered = filtered.where("senderID", filterUser);
   }
 
-  // TODO: ZQL needs is / is-not null.
-  // Then this could go in the query above.
-  const requests = messages.filter((message) => message.replyToID === null);
+  if (filterText) {
+    filtered = filtered.where("body", "LIKE", `%${escapeLike(filterText)}%`);
+  }
 
-  const randBetween = (min: number, max: number) =>
-    Math.floor(Math.random() * (max - min) + min);
-  const randInt = (max: number) => randBetween(0, max);
-  const randID = () => Math.random().toString(36).slice(2);
+  const filteredMessages = useQuery(filtered);
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const prevSize = requests.length;
-    const newSize = parseInt(e.currentTarget.value);
-    const requestsOpts = [
-      "Hey guys, is the zero package ready yet?",
-      "I tried installing the package, but it's not there.",
-      "The package does not install...",
-      "Hey Nate, can you ask Aaron when the npm package will be ready?",
-      "npm npm npm npm npm",
-      "n --- p --- m",
-      "npm wen",
-      "npm package?",
-    ];
-    const responseOpts = [
-      "It will be ready next week",
-      "We'll let you know",
-      "It's not ready - next week",
-      "Aaron says next week",
-      "Didn't we say next week",
-      "I could send you a tarball, but it won't work",
-    ];
-    if (newSize < prevSize) {
-      for (let i = newSize; i < prevSize; i++) {
-        z.mutate.message.delete({ id: messages[i].id });
+  const hasFilters = filterUser || filterText;
+  const [action, setAction] = useState<"add" | "remove" | undefined>(undefined);
+
+  useInterval(
+    () => {
+      if (!handleAction()) {
+        setAction(undefined);
       }
-    } else if (newSize > prevSize) {
-      for (let i = prevSize; i <= newSize; i++) {
-        const id = randID();
-        const numReplies = randBetween(-2, 2);
-        const mediumID = mediums[randInt(mediums.length)].id;
-        const timestamp = randBetween(1727395200000, 1728180000000);
-        z.mutate.message.create({
-          id,
-          senderID: dax.id,
-          mediumID,
-          body: requestsOpts[randInt(requestsOpts.length)],
-          timestamp,
-          // TODO: You should be able to omit optional fields.
-          replyToID: undefined,
-        });
-        for (let j = 0; j < numReplies; j++) {
-          z.mutate.message.create({
-            id: randID(),
-            senderID: cool[randInt(cool.length)].id,
-            mediumID,
-            body: responseOpts[randInt(responseOpts.length)],
-            timestamp: timestamp + randBetween(60 * 1000, 60 * 60 * 1000),
-            replyToID: id,
-          });
-        }
+    },
+    action !== undefined ? 1000 / 60 : null
+  );
+
+  const handleAction = () => {
+    if (action === undefined) {
+      return false;
+    }
+    if (action === "add") {
+      z.mutate.message.create(randomMessage(users, mediums));
+      return true;
+    } else {
+      if (allMessages.length === 0) {
+        return false;
       }
+      const index = randInt(allMessages.length);
+      z.mutate.message.delete({ id: allMessages[index].id });
+      return true;
     }
   };
 
-  const dateStr = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, "0");
-    const day = date.getDate().toString().padStart(2, "0");
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
+  const addMessages = () => setAction("add");
+
+  const removeMessages = (e: MouseEvent) => {
+    if (z.userID === "anon" && !e.shiftKey) {
+      alert(
+        "You must be logged in to delete. Hold the shift key to try anyway."
+      );
+      return;
+    }
+    setAction("remove");
   };
+
+  const stopAction = () => setAction(undefined);
+
+  const editMessage = (
+    e: MouseEvent,
+    id: string,
+    senderID: string,
+    prev: string
+  ) => {
+    if (senderID !== z.userID && !e.shiftKey) {
+      alert(
+        "You aren't logged in as the sender of this message. Editing won't be permitted. Hold the shift key to try anyway."
+      );
+      return;
+    }
+    const body = prompt("Edit message", prev);
+    z.mutate.message.update({
+      id,
+      body: body ?? prev,
+    });
+  };
+
+  const toggleLogin = async () => {
+    if (z.userID === "anon") {
+      await fetch("/api/login");
+    } else {
+      Cookies.remove("jwt");
+    }
+    location.reload();
+  };
+
+  // If initial sync hasn't completed, these can be empty.
+  if (!users.length || !mediums.length) {
+    return null;
+  }
+
+  const user = users.find((user) => user.id === z.userID)?.name ?? "anon";
 
   return (
     <>
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          background: "rgba(36, 36, 36, 0.9)",
-          padding: "1rem",
-          width: "100%",
-        }}
-      >
-        <h2>Poast</h2>
-        <input
-          type="range"
-          onChange={handleChange}
-          style={{ width: 250 }}
-          defaultValue={0}
-          max={50}
-        />
+      <div className="controls">
+        <div>
+          <button onMouseDown={addMessages} onMouseUp={stopAction}>
+            Add Messages
+          </button>
+          <button onMouseDown={removeMessages} onMouseUp={stopAction}>
+            Remove Messages
+          </button>
+          <em>(hold buttons to repeat)</em>
+        </div>
+        <div
+          style={{
+            justifyContent: "end",
+          }}
+        >
+          {user === "anon" ? "" : `Logged in as ${user}`}
+          <button onMouseDown={() => toggleLogin()}>
+            {user === "anon" ? "Login" : "Logout"}
+          </button>
+        </div>
       </div>
-      {requests.length === 0 ? (
+      <div className="controls">
+        <div>
+          From:
+          <select
+            onChange={(e) => setFilterUser(e.target.value)}
+            style={{ flex: 1 }}
+          >
+            <option key={""} value="">
+              Sender
+            </option>
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          Contains:
+          <input
+            type="text"
+            placeholder="message"
+            onChange={(e) => setFilterText(e.target.value)}
+            style={{ flex: 1 }}
+          />
+        </div>
+      </div>
+      <div className="controls">
+        <em>
+          {!hasFilters ? (
+            <>Showing all {filteredMessages.length} messages</>
+          ) : (
+            <>
+              Showing {filteredMessages.length} of {allMessages.length}{" "}
+              messages. Try opening{" "}
+              <a href="/" target="_blank">
+                another tab
+              </a>{" "}
+              to see them all!
+            </>
+          )}
+        </em>
+      </div>
+      {filteredMessages.length === 0 ? (
         <h3>
           <em>No posts found 😢</em>
         </h3>
       ) : (
-        <table border={1} cellSpacing={0} cellPadding={6}>
+        <table border={1} cellSpacing={0} cellPadding={6} width="100%">
           <thead>
             <tr>
               <th>Sender</th>
               <th>Medium</th>
               <th>Message</th>
               <th>Sent</th>
+              <th>Edit</th>
             </tr>
           </thead>
-          {requests.map((message) => (
-            <tbody key={message.id}>
-              <tr>
+          <tbody>
+            {filteredMessages.map((message) => (
+              <tr key={message.id}>
                 <td align="left">{message.sender?.name}</td>
                 <td align="left">{message.medium?.name}</td>
                 <td align="left">{message.body}</td>
-                <td align="right">{dateStr(message.timestamp)}</td>
+                <td align="right">{formatDate(message.timestamp)}</td>
+                <td
+                  onMouseDown={(e) =>
+                    editMessage(e, message.id, message.senderID, message.body)
+                  }
+                >
+                  ✏️
+                </td>
               </tr>
-              {message.replies.map((reply) => (
-                <tr key={reply.id}>
-                  <td align="left">↪ {reply.sender?.name}</td>
-                  <td align="left">{reply.medium?.name}</td>
-                  <td align="left">{reply.body}</td>
-                  <td align="right">{dateStr(message.timestamp)}</td>
-                </tr>
-              ))}
-            </tbody>
-          ))}
+            ))}
+          </tbody>
         </table>
       )}
     </>

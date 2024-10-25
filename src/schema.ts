@@ -4,20 +4,21 @@
 // relationships between tables.
 // See https://github.com/rocicorp/mono/blob/main/apps/zbugs/src/domain/schema.ts
 // for more complex examples, including many-to-many.
-//
-// Typically these will go in a different file to keep your root UI files tidy.
 
-const userSchema = {
+import { createSchema, createTableSchema, SchemaToRow } from "@rocicorp/zero";
+
+const userSchema = createTableSchema({
   tableName: "user",
   columns: {
     id: { type: "string" },
     name: { type: "string" },
+    partner: { type: "boolean" },
   },
   primaryKey: ["id"],
   relationships: {},
-} as const;
+});
 
-const mediumSchema = {
+const mediumSchema = createTableSchema({
   tableName: "medium",
   columns: {
     id: { type: "string" },
@@ -25,14 +26,13 @@ const mediumSchema = {
   },
   primaryKey: ["id"],
   relationships: {},
-} as const;
+});
 
-const messageSchema = {
+const messageSchema = createTableSchema({
   tableName: "message",
   columns: {
     id: { type: "string" },
     senderID: { type: "string" },
-    replyToID: { type: "string", optional: true },
     mediumID: { type: "string" },
     body: { type: "string" },
     timestamp: { type: "number" },
@@ -53,23 +53,19 @@ const messageSchema = {
         field: "id",
       },
     },
-    replies: {
-      source: "id",
-      dest: {
-        schema: () => messageSchema,
-        field: "replyToID",
-      },
-    },
   },
-} as const;
+});
 
-export const schema = {
+export const schema = createSchema({
   version: 1,
   tables: {
     user: userSchema,
     medium: mediumSchema,
     message: messageSchema,
   },
-} as const;
+});
 
 export type Schema = typeof schema;
+export type Message = SchemaToRow<typeof messageSchema>;
+export type Medium = SchemaToRow<typeof mediumSchema>;
+export type User = SchemaToRow<typeof schema.tables.user>;
