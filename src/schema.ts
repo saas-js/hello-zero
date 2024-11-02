@@ -5,7 +5,11 @@
 // See https://github.com/rocicorp/mono/blob/main/apps/zbugs/src/domain/schema.ts
 // for more complex examples, including many-to-many.
 
-import { createSchema, createTableSchema, SchemaToRow } from "@rocicorp/zero";
+import {
+  createSchema,
+  createTableSchema,
+  TableSchemaToRow,
+} from "@rocicorp/zero/schema";
 
 const userSchema = createTableSchema({
   tableName: "user",
@@ -66,6 +70,6 @@ export const schema = createSchema({
 });
 
 export type Schema = typeof schema;
-export type Message = SchemaToRow<typeof messageSchema>;
-export type Medium = SchemaToRow<typeof mediumSchema>;
-export type User = SchemaToRow<typeof schema.tables.user>;
+export type Message = TableSchemaToRow<typeof messageSchema>;
+export type Medium = TableSchemaToRow<typeof mediumSchema>;
+export type User = TableSchemaToRow<typeof schema.tables.user>;
