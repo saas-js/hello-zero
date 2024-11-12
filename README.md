@@ -54,36 +54,36 @@ VITE_PUBLIC_SERVER=http://localhost:4848
 
 1. **Install Zero**
 
-   ```bash
-   npm install @rocicorp/zero
-   ```
+```bash
+npm install @rocicorp/zero
+```
 
-   This is a private repository. You'll need NPM access.
+This is a private repository. You'll need NPM access.
 
 2. **Create Schema** Define your database schema using Zero's schema builder.
    See [schema.ts](src/schema.ts) for example:
 
-   ```typescript
-   import { createSchema, createTableSchema } from "@rocicorp/zero/schema";
+```typescript
+import { createSchema, createTableSchema } from "@rocicorp/zero/schema";
 
-   const userSchema = createTableSchema({
-     tableName: "user",
-     columns: {
-       id: { type: "string" },
-       name: { type: "string" },
-     },
-     primaryKey: ["id"],
-   });
+const userSchema = createTableSchema({
+  tableName: "user",
+  columns: {
+    id: { type: "string" },
+    name: { type: "string" },
+  },
+  primaryKey: ["id"],
+});
 
-   export const schema = createSchema({
-     version: 1,
-     tables: {
-       user: userSchema,
-     },
-   });
+export const schema = createSchema({
+  version: 1,
+  tables: {
+    user: userSchema,
+  },
+});
 
-   export type Schema = typeof schema;
-   ```
+export type Schema = typeof schema;
+```
 
 3. **Configure Zero** Create [zero.config.ts](zero.config.ts) in your project
    root:
