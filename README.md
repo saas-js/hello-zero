@@ -43,7 +43,7 @@ instructions)[https://www.notion.so/replicache/Connecting-to-Postgres-12b3bed895
 Set the following environment variables. `ZSTART_DB` is the URL to your Postgres
 database.
 
-```sh
+```env
 ZSTART_DB=postgresql://user:password@localhost:5432/postgres
 JWT_SECRET=your-secret-here
 ZSTART_REPLICA_DB_FILE=path/to/replica.db
