@@ -21,7 +21,8 @@ function App() {
 
   let filtered = all
     .related("medium", (medium) => medium.one())
-    .related("sender", (sender) => sender.one());
+    .related("sender", (sender) => sender.one())
+    .orderBy("timestamp", "desc");
 
   if (filterUser) {
     filtered = filtered.where("senderID", filterUser);
