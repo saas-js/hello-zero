@@ -43,10 +43,30 @@ instructions)[https://www.notion.so/replicache/Connecting-to-Postgres-12b3bed895
 Set the following environment variables. `ZSTART_DB` is the URL to your Postgres
 database.
 
-```js
-ZSTART_DB=postgresql://user:password@localhost:5432/postgres
-JWT_SECRET=your-secret-here
-ZSTART_REPLICA_DB_FILE=path/to/replica.db
+```ini
+# Your application's data
+ZERO_UPSTREAM_DB="postgresql://user:password@127.0.0.1/mydb"
+
+# A Postgres database Zero can use for storing Client View Records (information
+# about what has been synced to which clients). Can be same as above db, but
+# nice to keep separate for cleanliness and so that it can scale separately
+# when needed.
+ZERO_CVR_DB="postgresql://user:password@127.0.0.1/mydb_cvr"
+
+# A Postgres database Zero can use for storing its own replication log. Can be
+# same as either of above, but nice to keep separate for same reason as cvr db.
+ZERO_CHANGE_DB="postgresql://user:password@127.0.0.1/mydb_cdb"
+
+# Secret to decode auth token.
+ZERO_JWT_SECRET="secretkey"
+
+# Place to store sqlite replica file.
+ZERO_REPLICA_FILE="/tmp/zstart_replica.db"
+
+# Location of client-side schema definition.
+ZERO_SCHEMA_FILE="./src/schema.ts"
+
+# Where UI will connect to zero-cache.
 VITE_PUBLIC_SERVER=http://localhost:4848
 ```
 
@@ -64,7 +84,7 @@ This is a private repository. You'll need NPM access.
    See [schema.ts](src/schema.ts) for example:
 
 ```typescript
-import { createSchema, createTableSchema } from "@rocicorp/zero/schema";
+import { createSchema, createTableSchema } from "@rocicorp/zero";
 
 const userSchema = createTableSchema({
   tableName: "user",
@@ -85,59 +105,7 @@ export const schema = createSchema({
 export type Schema = typeof schema;
 ```
 
-3. **Configure Zero** Create [zero.config.ts](zero.config.ts) in your project
-   root:
-
-```typescript
-import { defineConfig } from "@rocicorp/zero/config";
-import { schema, type Schema } from "./src/schema";
-
-// The contents of your decoded JWT
-type AuthData = {
-  sub: string;
-};
-
-export default defineConfig<AuthData, Schema>(schema, (query) => {
-  const allowIfLoggedIn = (authData: AuthData) =>
-    query.user.where("id", "=", authData.sub);
-
-  const allowIfMessageSender = (authData: AuthData, row: Message) => {
-    return query.message
-      .where("id", row.id)
-      .where("senderID", "=", authData.sub);
-  };
-
-  return {
-    upstreamDBConnStr: must(process.env.ZSTART_DB),
-    cvrDBConnStr: must(process.env.ZSTART_DB),
-    changeDBConnStr: must(process.env.ZSTART_DB),
-    replicaDBFile: must(process.env.ZSTART_REPLICA_DB_FILE),
-    jwtSecret: must(process.env.JWT_SECRET),
-
-    numSyncWorkers: undefined, // this means numCores - 1
-
-    log: {
-      level: "debug",
-      format: "text",
-    },
-
-    authorization: {
-      // Example authorization rules
-      message: {
-        row: {
-          insert: undefined, // anyone can insert
-          update: [allowIfMessageSender], // only sender can edit their messages
-          delete: [allowIfLoggedIn], // must be logged in to delete
-        },
-      },
-
-      // you can add more authorization rules here for each table
-    },
-  };
-});
-```
-
-4. **Initialize Zero Client-Side** Set up the Zero provider in your app entry
+3. **Initialize Zero Client-Side** Set up the Zero provider in your app entry
    point. See [main.tsx](src/main.tsx):
 
 ```tsx
@@ -162,7 +130,7 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
-5. **Using Zero in Components** Example usage in React components. See
+4. **Using Zero in Components** Example usage in React components. See
    [App.tsx](src/App.tsx):
 
 ```typescript
