@@ -50,7 +50,7 @@ function App() {
       return false;
     }
     if (action === "add") {
-      z.mutate.message.create(randomMessage(users, mediums));
+      z.mutate.message.insert(randomMessage(users, mediums));
       return true;
     } else {
       if (allMessages.length === 0) {
