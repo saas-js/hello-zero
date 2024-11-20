@@ -7,7 +7,7 @@
     "dev": "VITE_PUBLIC_SERVER='http://localhost:4848' vite",
     "docker-up": "docker compose --env-file .env -f ./docker/docker-compose.yml up",
     "docker-down": "docker compose --env-file .env -f ./docker/docker-compose.yml down",
-    "clean": "source .env && docker volume rm -f docker_zstart_pgdata && rm -rf \"${ZSTART_REPLICA_DB_FILE}\"*",
+    "clean": "source .env && docker volume rm -f docker_zstart_pgdata && rm -rf \"${ZERO_REPLICA_FILE}\"*",
     "build": "tsc -b && vite build",
     "lint": "eslint ."
   },
