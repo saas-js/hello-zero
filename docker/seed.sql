@@ -1,5 +1,3 @@
-DROP TABLE IF EXISTS "user", "medium", "message";
-
 CREATE DATABASE zstart;
 CREATE DATABASE zstart_cvr;
 CREATE DATABASE zstart_cdb;
