@@ -11,7 +11,9 @@ import {
   definePermissions,
   ExpressionBuilder,
   TableSchema,
-  TableSchemaToRow,
+  Row,
+  NOBODY_CAN,
+  ANYONE_CAN,
 } from "@rocicorp/zero";
 
 const userSchema = createTableSchema({
@@ -67,9 +69,9 @@ export const schema = createSchema({
 });
 
 export type Schema = typeof schema;
-export type Message = TableSchemaToRow<typeof messageSchema>;
-export type Medium = TableSchemaToRow<typeof mediumSchema>;
-export type User = TableSchemaToRow<typeof schema.tables.user>;
+export type Message = Row<typeof messageSchema>;
+export type Medium = Row<typeof mediumSchema>;
+export type User = Row<typeof schema.tables.user>;
 
 // The contents of your decoded JWT.
 type AuthData = {
@@ -88,30 +90,28 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
   ) => cmp("senderID", "=", authData.sub ?? "");
 
   return {
-    // Nobody can write to the medium or user tables -- they are populated
-    // and fixed by seed.sql
     medium: {
       row: {
-        insert: [],
+        insert: NOBODY_CAN,
         update: {
-          preMutation: [],
+          preMutation: NOBODY_CAN,
         },
-        delete: [],
+        delete: NOBODY_CAN,
       },
     },
     user: {
       row: {
-        insert: [],
+        insert: NOBODY_CAN,
         update: {
-          preMutation: [],
+          preMutation: NOBODY_CAN,
         },
-        delete: [],
+        delete: NOBODY_CAN,
       },
     },
     message: {
       row: {
         // anyone can insert
-        insert: undefined,
+        insert: ANYONE_CAN,
         // only sender can edit their own messages
         update: {
           preMutation: [allowIfMessageSender],
