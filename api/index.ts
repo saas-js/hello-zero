@@ -1,11 +1,11 @@
-import { randomInt } from "crypto";
 import { Hono } from "hono";
+import { setCookie } from "hono/cookie";
 import { handle } from "hono/vercel";
 import { SignJWT } from "jose";
-import { setCookie } from "hono/cookie";
-import dotenv from "dotenv";
 
-dotenv.config();
+export const config = {
+  runtime: "edge",
+};
 
 export const app = new Hono().basePath("/api");
 
@@ -22,6 +22,10 @@ const userIDs = [
   "enVvyDlBul",
   "9ogaDuDNFx",
 ];
+
+function randomInt(max: number) {
+  return Math.floor(Math.random() * max);
+}
 
 app.get("/login", async (c) => {
   const jwtPayload = {
