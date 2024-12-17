@@ -1,4 +1,4 @@
-import { useState, MouseEvent } from "react";
+import { useState, MouseEvent, useRef } from "react";
 import Cookies from "js-cookie";
 import { useQuery, useZero } from "@rocicorp/zero/react";
 import { escapeLike } from "@rocicorp/zero";
@@ -36,6 +36,32 @@ function App() {
 
   const hasFilters = filterUser || filterText;
   const [action, setAction] = useState<"add" | "remove" | undefined>(undefined);
+  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const deleteRandomMessage = () => {
+    if (allMessages.length === 0) {
+      return false;
+    }
+    const index = randInt(allMessages.length);
+    z.mutate.message.delete({ id: allMessages[index].id });
+
+    return true;
+  };
+
+  const addRandomMessage = () => {
+    z.mutate.message.insert(randomMessage(users, mediums));
+    return true;
+  };
+
+  const handleAction = () => {
+    if (action === "add") {
+      return addRandomMessage();
+    } else if (action === "remove") {
+      return deleteRandomMessage();
+    }
+
+    return false;
+  };
 
   useInterval(
     () => {
@@ -46,36 +72,34 @@ function App() {
     action !== undefined ? 1000 / 60 : null
   );
 
-  const handleAction = () => {
-    if (action === undefined) {
-      return false;
-    }
-    if (action === "add") {
-      z.mutate.message.insert(randomMessage(users, mediums));
-      return true;
-    } else {
-      if (allMessages.length === 0) {
-        return false;
-      }
-      const index = randInt(allMessages.length);
-      z.mutate.message.delete({ id: allMessages[index].id });
-      return true;
-    }
+  const INITIAL_HOLD_DELAY_MS = 300;
+  const handleAddAction = () => {
+    addRandomMessage();
+    holdTimerRef.current = setTimeout(() => {
+      setAction("add");
+    }, INITIAL_HOLD_DELAY_MS);
   };
 
-  const addMessages = () => setAction("add");
-
-  const removeMessages = (e: MouseEvent) => {
-    if (z.userID === "anon" && !e.shiftKey) {
-      alert(
-        "You must be logged in to delete. Hold the shift key to try anyway."
-      );
+  const handleRemoveAction = (e: MouseEvent | React.TouchEvent) => {
+    if (z.userID === "anon" && "shiftKey" in e && !e.shiftKey) {
+      alert("You must be logged in to delete. Hold shift to try anyway.");
       return;
     }
-    setAction("remove");
+    deleteRandomMessage();
+
+    holdTimerRef.current = setTimeout(() => {
+      setAction("remove");
+    }, INITIAL_HOLD_DELAY_MS);
   };
 
-  const stopAction = () => setAction(undefined);
+  const stopAction = () => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+
+    setAction(undefined);
+  };
 
   const editMessage = (
     e: MouseEvent,
@@ -116,13 +140,25 @@ function App() {
     <>
       <div className="controls">
         <div>
-          <button onMouseDown={addMessages} onMouseUp={stopAction}>
+          <button
+            onMouseDown={handleAddAction}
+            onMouseUp={stopAction}
+            onMouseLeave={stopAction}
+            onTouchStart={handleAddAction}
+            onTouchEnd={stopAction}
+          >
             Add Messages
           </button>
-          <button onMouseDown={removeMessages} onMouseUp={stopAction}>
+          <button
+            onMouseDown={handleRemoveAction}
+            onMouseUp={stopAction}
+            onMouseLeave={stopAction}
+            onTouchStart={handleRemoveAction}
+            onTouchEnd={stopAction}
+          >
             Remove Messages
           </button>
-          <em>(hold buttons to repeat)</em>
+          <em>(hold down buttons to repeat)</em>
         </div>
         <div
           style={{
