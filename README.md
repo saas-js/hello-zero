@@ -40,7 +40,7 @@ instructions)[https://www.notion.so/replicache/Connecting-to-Postgres-12b3bed895
 
 **2. Environment Variables**
 
-Set the following environment variables. `ZSTART_DB` is the URL to your Postgres
+Set the following environment variables. `ZSTART_UPSTREAM_DB` is the URL to your Postgres
 database.
 
 ```ini
