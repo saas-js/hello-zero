@@ -58,7 +58,7 @@ ZERO_CVR_DB="postgresql://user:password@127.0.0.1/mydb_cvr"
 ZERO_CHANGE_DB="postgresql://user:password@127.0.0.1/mydb_cdb"
 
 # Secret to decode auth token.
-ZERO_JWT_SECRET="secretkey"
+ZERO_AUTH_SECRET="secretkey"
 
 # Place to store sqlite replica file.
 ZERO_REPLICA_FILE="/tmp/zstart_replica.db"
