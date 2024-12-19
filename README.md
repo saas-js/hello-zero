@@ -63,9 +63,6 @@ ZERO_JWT_SECRET="secretkey"
 # Place to store sqlite replica file.
 ZERO_REPLICA_FILE="/tmp/zstart_replica.db"
 
-# Location of client-side schema definition.
-ZERO_SCHEMA_FILE="./src/schema.ts"
-
 # Where UI will connect to zero-cache.
 VITE_PUBLIC_SERVER=http://localhost:4848
 ```
