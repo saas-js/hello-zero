@@ -35,8 +35,7 @@ repository as a reference implementation.
 
 **1. PostgreSQL database with Write-Ahead Logging (WAL) enabled**
 
-See (this Notion doc for
-instructions)[https://www.notion.so/replicache/Connecting-to-Postgres-12b3bed8954581db8e05e1ac77c77515]
+See [Connecting to Postgres](https://zero.rocicorp.dev/docs/connecting-to-postgres)
 
 **2. Environment Variables**
 
