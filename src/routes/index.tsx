@@ -2,11 +2,18 @@ import { useState, MouseEvent, useRef } from "react";
 import Cookies from "js-cookie";
 import { useQuery, useZero } from "@rocicorp/zero/react";
 import { escapeLike } from "@rocicorp/zero";
-import { Schema } from "./schema";
-import { randomMessage } from "./test-data";
-import { randInt } from "./rand";
-import { useInterval } from "./use-interval";
-import { formatDate } from "./date";
+import { Schema } from "../schema";
+import { randomMessage } from "../test-data";
+import { randInt } from "../rand";
+import { useInterval } from "../use-interval";
+import { formatDate } from "../date";
+import { createFileRoute } from "@tanstack/react-router";
+import { Box, createListCollection, Field, HStack, Input, Text } from "@chakra-ui/react";
+import { Button, EmptyState, GridList, Select } from "@saas-ui/react";
+
+export const Route = createFileRoute("/")({
+  component: () => <App />,
+}); 
 
 function App() {
   const z = useZero<Schema>();
@@ -136,11 +143,15 @@ function App() {
 
   const user = users.find((user) => user.id === z.userID)?.name ?? "anon";
 
+  const userCollection = createListCollection({
+    items: users
+  });
+
   return (
     <>
-      <div className="controls">
-        <div>
-          <button
+      <HStack px="4" py="2">
+        <HStack flex="1">
+          <Button
             onMouseDown={handleAddAction}
             onMouseUp={stopAction}
             onMouseLeave={stopAction}
@@ -148,8 +159,8 @@ function App() {
             onTouchEnd={stopAction}
           >
             Add Messages
-          </button>
-          <button
+          </Button>
+          <Button
             onMouseDown={handleRemoveAction}
             onMouseUp={stopAction}
             onMouseLeave={stopAction}
@@ -157,49 +168,53 @@ function App() {
             onTouchEnd={stopAction}
           >
             Remove Messages
-          </button>
+          </Button>
           <em>(hold down buttons to repeat)</em>
-        </div>
-        <div
-          style={{
-            justifyContent: "end",
-          }}
+        </HStack>
+        <HStack
+          justifyContent="end"
         >
           {user === "anon" ? "" : `Logged in as ${user}`}
-          <button onMouseDown={() => toggleLogin()}>
+          <Button onMouseDown={() => toggleLogin()}>
             {user === "anon" ? "Login" : "Logout"}
-          </button>
-        </div>
-      </div>
-      <div className="controls">
-        <div>
-          From:
-          <select
-            onChange={(e) => setFilterUser(e.target.value)}
-            style={{ flex: 1 }}
+          </Button>
+        </HStack>
+      </HStack>
+
+      <Box px="4" py="2">
+
+        <HStack mb="4">
+      <Field.Root>
+        <Field.Label>From</Field.Label>
+        <Select.Root
+          collection={userCollection}
+            onValueChange={({value}) => setFilterUser(value[0])}
+            
           >
-            <option key={""} value="">
-              Sender
-            </option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
+            <Select.Trigger>
+              <Select.ValueText />  
+            </Select.Trigger>
+            <Select.Content>
+            {userCollection.items.map((user) => (
+              <Select.Item key={user.id} item={user}>
                 {user.name}
-              </option>
+              </Select.Item>
             ))}
-          </select>
-        </div>
-        <div>
-          Contains:
-          <input
+            </Select.Content>
+          </Select.Root>
+        </Field.Root>
+        <Field.Root>
+          <Field.Label>Contains</Field.Label>
+          <Input
             type="text"
             placeholder="message"
             onChange={(e) => setFilterText(e.target.value)}
-            style={{ flex: 1 }}
           />
-        </div>
-      </div>
-      <div className="controls">
-        <em>
+        </Field.Root>
+        </HStack>
+ 
+      <Box>
+        <Text fontSize="sm" color="fg.muted">
           {!hasFilters ? (
             <>Showing all {filteredMessages.length} messages</>
           ) : (
@@ -212,44 +227,34 @@ function App() {
               to see them all!
             </>
           )}
-        </em>
-      </div>
+        </Text>
+      </Box>
       {filteredMessages.length === 0 ? (
-        <h3>
-          <em>No posts found 😢</em>
-        </h3>
+        <EmptyState title="No posts found 😢" />
       ) : (
-        <table border={1} cellSpacing={0} cellPadding={6} width="100%">
-          <thead>
-            <tr>
-              <th>Sender</th>
-              <th>Medium</th>
-              <th>Message</th>
-              <th>Sent</th>
-              <th>Edit</th>
-            </tr>
-          </thead>
-          <tbody>
+        <GridList.Root>
             {filteredMessages.map((message) => (
-              <tr key={message.id}>
-                <td align="left">{message.sender?.name}</td>
-                <td align="left">{message.medium?.name}</td>
-                <td align="left">{message.body}</td>
-                <td align="right">{formatDate(message.timestamp)}</td>
-                <td
-                  onMouseDown={(e) =>
-                    editMessage(e, message.id, message.senderID, message.body)
-                  }
-                >
-                  ✏️
-                </td>
-              </tr>
+              <GridList.Item key={message.id}>
+                <GridList.Cell flex="1">
+                {message.sender?.name}
+                </GridList.Cell>
+                <GridList.Cell flex="1" lineClamp={2} width="400px">
+                {message.body}
+                </GridList.Cell>
+                <GridList.Cell width="120px">
+                {message.medium?.name}
+                </GridList.Cell>
+                <GridList.Cell color="fg.muted" width="150px">
+                {formatDate(message.timestamp)}
+                </GridList.Cell>
+                <GridList.Cell>
+                  <Button onClick={(e) => editMessage(e, message.id, message.senderID, message.body)}>Edit</Button>
+                </GridList.Cell>
+              </GridList.Item>
             ))}
-          </tbody>
-        </table>
+          </GridList.Root>
       )}
+      </Box>
     </>
   );
 }
-
-export default App;
