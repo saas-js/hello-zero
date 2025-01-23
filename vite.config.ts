@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { app } from "./api/index.js";
 import dotenv from "dotenv";
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+
 
 if (process.env.NODE_ENV === "development") {
   dotenv.config();
@@ -19,6 +21,7 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    TanStackRouterVite(),
     {
       name: "api-server",
       configureServer(server) {

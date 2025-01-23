@@ -27,3 +27,7 @@ dist-ssr
 # zero
 zero-schema.json
 .vercel
+
+# Env
+.env
+.env.*
